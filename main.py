@@ -23,7 +23,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 from telegram.constants import ParseMode
 
 # Configuration
-BOT_TOKEN = "7665775432:AAElEdFfeuP4L3rJvTYFtnYycOhmTYv0knk"  # Replace with your bot token
+BOT_TOKEN = "YOUR_BOT_TOKEN"  # Replace with your bot token
 PROJECTS_DIR = Path("projects")
 LOGS_DIR = Path("logs")
 MAX_LOG_LINES = 100
