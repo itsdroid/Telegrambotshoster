@@ -114,7 +114,7 @@ chmod +x start.sh stop.sh
 Edit the `BOT_TOKEN` variable in `main.py`:
 
 ```python
-BOT_TOKEN = "7665775432:AAElEdFfeuP4L3rJvTYFtnYycOhmTYv0knk"  # Replace with your token
+BOT_TOKEN = "432344344:453434fdfhkfhdfff"  # Replace with your token
 ```
 
 ### User Authorization
