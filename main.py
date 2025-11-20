@@ -14,6 +14,7 @@ import time
 import logging
 from datetime import datetime
 from pathlib import Path
+import shutil
 import psutil
 import asyncio
 from typing import Dict, List, Optional, Tuple
@@ -280,6 +281,35 @@ class ProjectManager:
         self.project_configs[name]['run_command'] = command
         self.save_projects()
         return True
+    
+    def delete_project(self, name: str) -> Tuple[bool, str]:
+        """Delete a project and its resources"""
+        if not self.project_exists(name):
+            return False, "Project not found"
+        
+        # Stop project if running
+        if name in self.processes:
+            stopped, message = self.stop_project(name)
+            if not stopped:
+                return False, f"Unable to stop project before deletion: {message}"
+        
+        try:
+            project_path = self.get_project_path(name)
+            if project_path.exists():
+                shutil.rmtree(project_path)
+            
+            project_logs_dir = LOGS_DIR / name
+            if project_logs_dir.exists():
+                shutil.rmtree(project_logs_dir)
+            
+            if name in self.project_configs:
+                del self.project_configs[name]
+                self.save_projects()
+            
+            return True, f"Project '{name}' deleted successfully."
+        except Exception as e:
+            logger.error(f"Error deleting project {name}: {e}")
+            return False, f"Error deleting project: {str(e)}"
 
 # Global project manager instance
 project_manager = ProjectManager()
@@ -530,6 +560,9 @@ async def show_project_menu(query, context: ContextTypes.DEFAULT_TYPE, project_n
             InlineKeyboardButton("📦 Install Deps", callback_data=f"action_install_{project_name}"),
             InlineKeyboardButton("⚙️ Edit Command", callback_data=f"action_edit_cmd_{project_name}")
         ],
+        [
+            InlineKeyboardButton("🗑️ Delete", callback_data=f"action_delete_{project_name}")
+        ],
         [InlineKeyboardButton("⬅️ Back", callback_data="refresh_projects")]
     ]
     
@@ -589,6 +622,31 @@ async def handle_project_action(query, context: ContextTypes.DEFAULT_TYPE, actio
             f"⚙️ **Edit Run Command**\n\n"
             f"Please send the new run command for **{project_name}**:",
             parse_mode=ParseMode.MARKDOWN
+        )
+    
+    elif action == "delete":
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("✅ Yes, delete", callback_data=f"action_deleteconfirm_{project_name}")
+            ],
+            [
+                InlineKeyboardButton("❌ Cancel", callback_data=f"project_{project_name}")
+            ]
+        ])
+        await query.edit_message_text(
+            f"🗑️ **Delete Project**\n\n"
+            f"Are you sure you want to delete **{project_name}**? This cannot be undone.",
+            reply_markup=keyboard,
+            parse_mode=ParseMode.MARKDOWN
+        )
+    
+    elif action == "deleteconfirm":
+        success, message = project_manager.delete_project(project_name)
+        status_emoji = "✅" if success else "❌"
+        keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="refresh_projects")]])
+        await query.edit_message_text(
+            f"{status_emoji} **Delete Project**\n\n{message}",
+            reply_markup=keyboard
         )
 
 def main():
