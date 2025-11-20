@@ -24,11 +24,12 @@ from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQu
 from telegram.constants import ParseMode
 
 # Configuration
-BOT_TOKEN = ""  # Replace with your bot token
+CONFIG_FILE = Path("config.json")
 PROJECTS_DIR = Path("projects")
 LOGS_DIR = Path("logs")
 MAX_LOG_LINES = 100
 AUTHORIZED_USERS = []  # Add user IDs here for authorization, empty = all users allowed
+BOT_TOKEN: Optional[str] = None
 
 # Ensure directories exist
 PROJECTS_DIR.mkdir(exist_ok=True)
@@ -46,6 +47,27 @@ logging.basicConfig(
 # Disable httpx logging to reduce log noise
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
+
+
+def get_bot_token() -> str:
+    """Load the bot token from environment variables or config file."""
+    token = os.getenv("BOT_TOKEN")
+    if token:
+        return token.strip()
+    
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                config_data = json.load(f)
+            token = config_data.get("BOT_TOKEN")
+            if token:
+                return token.strip()
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.error(f"Error reading BOT_TOKEN from config file: {exc}")
+    
+    raise RuntimeError(
+        "BOT_TOKEN not configured. Set BOT_TOKEN env var or provide it in config.json"
+    )
 
 class ProjectManager:
     """Manages bot projects and their processes"""
@@ -651,6 +673,11 @@ async def handle_project_action(query, context: ContextTypes.DEFAULT_TYPE, actio
 
 def main():
     """Main function to run the bot"""
+    global BOT_TOKEN
+    
+    if BOT_TOKEN is None:
+        BOT_TOKEN = get_bot_token()
+    
     # Create the Application
     application = Application.builder().token(BOT_TOKEN).build()
     
@@ -681,8 +708,8 @@ def main():
         logger.error(f"Bot error: {e}")
 
 if __name__ == "__main__":
-    if BOT_TOKEN == "YOUR_BOT_TOKEN_HERE":
-        logger.error("BOT_TOKEN not configured")
+    try:
+        main()
+    except RuntimeError as exc:
+        logger.error(exc)
         sys.exit(1)
-    
-    main()
